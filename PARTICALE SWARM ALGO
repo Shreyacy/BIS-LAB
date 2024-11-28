@@ -1,0 +1,79 @@
+import numpy as np
+
+# Step 1: Define the Objective Function
+def objective_function(x):
+    """
+    Example: Sphere function.
+    f(x) = sum(x_i^2), where x is a vector.
+    Replace with your desired function.
+    """
+    return sum(x**2)
+
+# Step 2: Implement PSO Algorithm
+def particle_swarm_optimization(obj_func, dim, bounds, num_particles, max_iter, w, c1, c2):
+    """
+    Parameters:
+    - obj_func: The function to minimize.
+    - dim: Number of dimensions (variables).
+    - bounds: Tuple (lower_bound, upper_bound) for the search space.
+    - num_particles: Number of particles in the swarm.
+    - max_iter: Number of iterations.
+    - w: Inertia weight (controls exploration).
+    - c1: Cognitive coefficient (particle's own experience).
+    - c2: Social coefficient (swarm's experience).
+    """
+    lower_bound, upper_bound = bounds
+
+    # Step 3: Initialize Particles
+    positions = np.random.uniform(lower_bound, upper_bound, (num_particles, dim))  # Random positions
+    velocities = np.random.uniform(-1, 1, (num_particles, dim))  # Random velocities
+    personal_best_positions = positions.copy()  # Each particle's best-known position
+    personal_best_scores = np.array([obj_func(p) for p in positions])  # Best fitness for each particle
+    global_best_position = positions[np.argmin(personal_best_scores)]  # Global best position
+    global_best_score = np.min(personal_best_scores)  # Global best fitness score
+
+    # Step 4: Iterative Optimization
+    for iteration in range(max_iter):
+        for i in range(num_particles):
+            # Evaluate fitness
+            fitness = obj_func(positions[i])
+            if fitness < personal_best_scores[i]:  # Update personal best
+                personal_best_scores[i] = fitness
+                personal_best_positions[i] = positions[i].copy()
+            if fitness < global_best_score:  # Update global best
+                global_best_score = fitness
+                global_best_position = positions[i].copy()
+
+        # Step 5: Update Velocities and Positions
+        for i in range(num_particles):
+            r1, r2 = np.random.rand(dim), np.random.rand(dim)  # Random factors
+            cognitive_velocity = c1 * r1 * (personal_best_positions[i] - positions[i])
+            social_velocity = c2 * r2 * (global_best_position - positions[i])
+            velocities[i] = w * velocities[i] + cognitive_velocity + social_velocity
+            positions[i] += velocities[i]  # Update position
+
+            # Enforce boundaries
+            positions[i] = np.clip(positions[i], lower_bound, upper_bound)
+
+        # Print the best solution of the current iteration
+        print(f"Iteration {iteration + 1}/{max_iter}: Global Best Fitness = {global_best_score}")
+
+    # Step 6: Return the Best Solution
+    return global_best_position, global_best_score
+
+
+if __name__ == "__main__":
+    dim = 5  # Number of dimensions
+    bounds = (-10, 10)  # Search space bounds
+    num_particles = 30  # Number of particles
+    max_iter = 10  # Reduced number of iterations
+    w = 0.5  # Inertia weight
+    c1 = 1.5  # Cognitive coefficient
+    c2 = 1.5  # Social coefficient
+
+    best_position, best_score = particle_swarm_optimization(
+        objective_function, dim, bounds, num_particles, max_iter, w, c1, c2
+    )
+
+    print("\nBest Position:", best_position)
+    print("Best Fitness:", best_score)
