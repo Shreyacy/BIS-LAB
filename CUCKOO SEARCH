@@ -1,0 +1,71 @@
+import numpy as np
+import math
+
+# Objective function (example: Sphere function)
+def objective_function(x):
+    return np.sum(x**2)
+
+# Lévy flight function (fixed)
+def levy_flight(Lambda, dim):
+    sigma = (math.gamma(1 + Lambda) * math.sin(math.pi * Lambda / 2) /
+             (math.gamma((1 + Lambda) / 2) * Lambda * 2**((Lambda - 1) / 2)))**(1 / Lambda)
+    u = np.random.normal(0, sigma, size=dim)
+    v = np.random.normal(0, 1, size=dim)
+    step = u / abs(v)**(1 / Lambda)
+    return step
+
+# Cuckoo Search algorithm
+def cuckoo_search(objective_function, dim, bounds, num_nests=25, max_iter=100, discovery_rate=0.25):
+    # Initialize nests randomly
+    nests = np.random.uniform(bounds[0], bounds[1], (num_nests, dim))
+    fitness = np.array([objective_function(nest) for nest in nests])
+
+    # Best solution so far
+    best_nest = nests[np.argmin(fitness)]
+    best_fitness = np.min(fitness)
+
+    for iteration in range(max_iter):
+        # Generate new solutions (cuckoos)
+        new_nests = np.copy(nests)
+        for i in range(num_nests):
+            step_size = levy_flight(1.5, dim)  # Pass dim for correct step size
+            new_nests[i] = nests[i] + step_size * np.random.uniform(bounds[0], bounds[1], size=dim)
+            new_nests[i] = np.clip(new_nests[i], bounds[0], bounds[1])  # Keep within bounds
+
+        # Evaluate the new solutions
+        new_fitness = np.array([objective_function(nest) for nest in new_nests])
+
+        # Greedy selection: replace nests if the new solution is better
+        for i in range(num_nests):
+            if new_fitness[i] < fitness[i]:
+                nests[i] = new_nests[i]
+                fitness[i] = new_fitness[i]
+
+        # Abandon a fraction of the worst nests and replace them with random ones
+        num_abandoned = int(discovery_rate * num_nests)
+        worst_indices = fitness.argsort()[-num_abandoned:]
+        nests[worst_indices] = np.random.uniform(bounds[0], bounds[1], (num_abandoned, dim))
+        fitness[worst_indices] = [objective_function(nest) for nest in nests[worst_indices]]
+
+        # Update the best solution
+        current_best_index = np.argmin(fitness)
+        if fitness[current_best_index] < best_fitness:
+            best_nest = nests[current_best_index]
+            best_fitness = fitness[current_best_index]
+
+        print(f"Iteration {iteration + 1}/{max_iter}: Best Fitness = {best_fitness}")
+
+    return best_nest, best_fitness
+
+# Example usage
+if __name__ == "__main__":
+    dim = 5  # Number of dimensions
+    bounds = (-10, 10)  # Search space bounds
+    num_nests = 20  # Number of nests
+    max_iter = 10  # Reduced number of iterations for faster execution
+    discovery_rate = 0.25  # Probability of discovering a cuckoo's egg
+
+    best_solution, best_fitness = cuckoo_search(objective_function, dim, bounds, num_nests, max_iter, discovery_rate)
+
+    print("\nBest Solution:", best_solution)
+    print("Best Fitness:", best_fitness)
