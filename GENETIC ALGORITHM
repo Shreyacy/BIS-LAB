@@ -1,0 +1,74 @@
+import numpy as np
+
+# Step 1: Define the Objective Function
+def objective_function(x):
+    """
+    Example: Sphere function. Replace with your desired function.
+    f(x) = sum(x_i^2)
+    """
+    return sum(x**2)
+
+# Step 2: Genetic Algorithm Implementation
+def genetic_algorithm(obj_func, dim, bounds, population_size, generations, mutation_rate):
+    """
+    Parameters:
+    - obj_func: Objective function to minimize.
+    - dim: Number of dimensions (variables).
+    - bounds: Tuple (lower_bound, upper_bound) for each dimension.
+    - population_size: Number of individuals in the population.
+    - generations: Number of generations.
+    - mutation_rate: Probability of mutation for each gene.
+    """
+    lower_bound, upper_bound = bounds
+    
+    # Step 3: Initialize Population
+    population = np.random.uniform(lower_bound, upper_bound, (population_size, dim))
+    
+    # Evaluate fitness of the initial population
+    fitness = np.array([obj_func(ind) for ind in population])
+    
+    # Evolution loop
+    for generation in range(generations):
+        # Step 4: Selection (Tournament Selection)
+        selected_indices = np.random.choice(range(population_size), size=population_size, replace=True)
+        selected_population = population[selected_indices]
+        
+        # Step 5: Crossover (Single-Point Crossover)
+        offspring = []
+        for i in range(0, population_size, 2):
+            parent1, parent2 = selected_population[i], selected_population[i + 1]
+            crossover_point = np.random.randint(1, dim)
+            child1 = np.concatenate((parent1[:crossover_point], parent2[crossover_point:]))
+            child2 = np.concatenate((parent2[:crossover_point], parent1[crossover_point:]))
+            offspring.extend([child1, child2])
+        offspring = np.array(offspring)
+        
+        # Step 6: Mutation
+        for ind in offspring:
+            if np.random.rand() < mutation_rate:
+                gene_to_mutate = np.random.randint(dim)
+                ind[gene_to_mutate] += np.random.uniform(-1, 1)  # Random mutation within bounds
+                ind[gene_to_mutate] = np.clip(ind[gene_to_mutate], lower_bound, upper_bound)  # Apply bounds
+        
+        # Step 7: Replace Population
+        population = offspring
+        fitness = np.array([obj_func(ind) for ind in population])
+        
+        # Print the best solution of the generation
+        best_index = np.argmin(fitness)
+        print(f"Generation {generation+1}: Best Fitness = {fitness[best_index]}")
+    
+    # Return the best solution found
+    best_index = np.argmin(fitness)
+    return population[best_index], fitness[best_index]
+
+if __name__ == "__main__":
+    dim = 5  # Number of variables
+    bounds = (-10, 10)  # Bounds for each variable
+    population_size = 20  # Number of individuals in the population
+    generations = 10  # Reduced number of generations
+    mutation_rate = 0.1  # Mutation probability
+
+    best_solution, best_fitness = genetic_algorithm(objective_function, dim, bounds, population_size, generations, mutation_rate)
+    print("\nBest Solution:", best_solution)
+    print("Best Fitness:", best_fitness)
