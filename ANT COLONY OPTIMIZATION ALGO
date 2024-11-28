@@ -1,0 +1,117 @@
+import numpy as np
+
+# Define the TSP problem
+def distance_matrix(cities):
+    """
+    Creates a distance matrix from a list of cities.
+    cities: List of tuples representing coordinates of cities [(x1, y1), (x2, y2), ...]
+    """
+    num_cities = len(cities)
+    dist_matrix = np.zeros((num_cities, num_cities))
+    for i in range(num_cities):
+        for j in range(num_cities):
+            if i != j:
+                dist_matrix[i][j] = np.linalg.norm(np.array(cities[i]) - np.array(cities[j]))
+    return dist_matrix
+
+# Ant Colony Optimization algorithm
+class AntColony:
+    def __init__(self, dist_matrix, num_ants, num_iterations, alpha, beta, evaporation_rate, Q):
+        self.dist_matrix = dist_matrix
+        self.num_cities = len(dist_matrix)
+        self.num_ants = num_ants
+        self.num_iterations = num_iterations
+        self.alpha = alpha  # Importance of pheromone
+        self.beta = beta    # Importance of distance
+        self.evaporation_rate = evaporation_rate
+        self.Q = Q  # Pheromone deposited by each ant
+        self.pheromone = np.ones((self.num_cities, self.num_cities))  # Initialize pheromone matrix
+        self.best_path = None
+        self.best_path_length = float("inf")
+
+    def run(self):
+        for iteration in range(self.num_iterations):
+            all_paths = []
+            path_lengths = []
+
+            for ant in range(self.num_ants):
+                path = self.generate_path()
+                path_length = self.calculate_path_length(path)
+                all_paths.append(path)
+                path_lengths.append(path_length)
+
+                # Update the best path if a shorter one is found
+                if path_length < self.best_path_length:
+                    self.best_path = path
+                    self.best_path_length = path_length
+
+            # Update pheromone matrix
+            self.update_pheromones(all_paths, path_lengths)
+
+            print(f"Iteration {iteration + 1}/{self.num_iterations}: Best Path Length = {self.best_path_length}")
+
+        return self.best_path, self.best_path_length
+
+    def generate_path(self):
+        # Start at a random city
+        start_city = np.random.randint(0, self.num_cities)
+        path = [start_city]
+        visited = set(path)
+
+        for _ in range(self.num_cities - 1):
+            current_city = path[-1]
+            probabilities = self.calculate_transition_probabilities(current_city, visited)
+            next_city = self.select_next_city(probabilities)
+            path.append(next_city)
+            visited.add(next_city)
+
+        path.append(start_city)  # Return to the starting city
+        return path
+
+    def calculate_transition_probabilities(self, current_city, visited):
+        probabilities = []
+        for next_city in range(self.num_cities):
+            if next_city not in visited:
+                pheromone = self.pheromone[current_city][next_city] ** self.alpha
+                distance = (1 / self.dist_matrix[current_city][next_city]) ** self.beta
+                probabilities.append(pheromone * distance)
+            else:
+                probabilities.append(0)
+        total = sum(probabilities)
+        return [p / total for p in probabilities]
+
+    def select_next_city(self, probabilities):
+        return np.random.choice(range(self.num_cities), p=probabilities)
+
+    def calculate_path_length(self, path):
+        return sum(self.dist_matrix[path[i]][path[i + 1]] for i in range(len(path) - 1))
+
+    def update_pheromones(self, all_paths, path_lengths):
+        # Evaporate pheromone
+        self.pheromone *= (1 - self.evaporation_rate)
+
+        # Deposit pheromones based on the quality of paths
+        for path, length in zip(all_paths, path_lengths):
+            for i in range(len(path) - 1):
+                self.pheromone[path[i]][path[i + 1]] += self.Q / length
+                self.pheromone[path[i + 1]][path[i]] += self.Q / length  # Symmetric TSP
+
+if __name__ == "__main__":
+    # Define cities as (x, y) coordinates
+    cities = [(0, 0), (2, 4), (5, 0), (6, 3), (8, 8)]
+    dist_matrix = distance_matrix(cities)
+
+    # ACO parameters
+    num_ants = 10
+    num_iterations = 10  # Reduced number of iterations
+    alpha = 1  # Importance of pheromone
+    beta = 2   # Importance of distance
+    evaporation_rate = 0.5
+    Q = 100  # Pheromone deposited by each ant
+
+    # Run ACO
+    colony = AntColony(dist_matrix, num_ants, num_iterations, alpha, beta, evaporation_rate, Q)
+    best_path, best_path_length = colony.run()
+
+    print("\nBest Path:", best_path)
+    print("Best Path Length:", best_path_length)
